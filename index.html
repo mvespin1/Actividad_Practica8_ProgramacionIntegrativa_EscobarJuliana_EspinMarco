@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>WebAssembly</title>
+    <script type="module" src="my-container.js"></script>
+    <script type="module" src="my-header.js"></script>
+    <script type="module" src="my-content.js"></script>
+    <script type="module" src="my-footer.js"></script>
+
+</head>
+
+<body>
+
+    <script>
+        let wasmExports = null;
+
+        let wasmMemory = new WebAssembly.Memory({ initial: 256, maximum: 256 });
+
+        let wasmTable = new WebAssembly.Table({
+            'initial': 1,
+            'maximum': 1,
+            'element': 'anyfunc'
+        });
+
+        let asmLibraryArg = {
+            "__handle_stack_overflow": () => { },
+            "emscripten_resize_heap": () => { },
+            "__lock": () => { },
+            "__unlock": () => { },
+            "memory": wasmMemory,
+            "table": wasmTable
+        };
+
+        var info = {
+            'env': asmLibraryArg,
+            'wasi_snapshot_preview1': asmLibraryArg
+        };
+
+        async function loadWasm() {
+            let response = await fetch('functions.wasm');
+            let bytes = await response.arrayBuffer();
+            let wasmObj = await WebAssembly.instantiate(bytes, info);
+            wasmExports = wasmObj.instance.exports;
+        }
+
+        function executeSum() {
+            if (wasmExports) {
+                const result = wasmExports.add(100, 15);
+                console.log("Resultado de la suma:", result);
+            } else {
+                console.error("WebAssembly aún no ha sido cargado. Espere un momento e intente nuevamente.");
+            }
+        }
+
+        loadWasm();
+    </script>
+
+
+    <my-container>
+        <!-- Contenido del Encabezado -->
+        <my-header slot="header"></my-header>
+        <!-- Contenido del Cuerpo -->
+        <my-content slot="content">
+            <my-button slot="button" onclick="executeSum()">Ejecutar Suma</my-button>
+        </my-content>
+
+        <!-- Contenido del Pie de Página -->
+        <my-footer slot="footer"></my-footer>
+    </my-container>
+
+</body>
+
+</html>
